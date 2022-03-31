@@ -120,7 +120,16 @@
     <br />
     <ul>
       <h4>현재 상태</h4>
-      <li>컨트랙트 주소: <span id="contractAddr"></span></li>
+      <li>
+        컨트랙트 주소:<input
+          id="contractAddr"
+          type="text"
+          required
+          minlength="42"
+          maxlength="42"
+          size="42"
+        /><button onclick="refreshContract()">Set</button>
+      </li>
       <li>현재 어카운트 주소: <span id="accountAddr"></span></li>
       <li>발행 NFT 수: <span id="totalSupply"></span></li>
       <li>발행 NFT 목록: <span id="tokenIDList"></span></li>
@@ -871,7 +880,7 @@
         dynamicNFTabi,
         dynamicNFTAddress
       );
-      document.getElementById("contractAddr").innerHTML = dynamicNFTAddress;
+      document.getElementById("contractAddr").value = dynamicNFTAddress;
 
       await refreshAll();
       setInterval(addSeconds, 1000);
@@ -880,8 +889,17 @@
       ).value = document.getElementById("accountAddr").innerHTML;
     }
 
+    async function refreshContract() {
+      window.dynamicNFTContract = new web3.eth.Contract(
+        dynamicNFTabi,
+        document.getElementById("contractAddr").value
+      );
+    }
+
     async function refreshAll() {
-      const accounts = await web3.eth.getAccounts();
+      const accounts = await ethereum.request({
+        method: "eth_requestAccounts"
+      });
       document.getElementById("accountAddr").innerHTML = accounts[0];
       await refreshState();
       await refreshTotalSupply();
