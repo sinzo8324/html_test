@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE" />
+    <!-- <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.2.3/milligram.min.css"
+    /> -->
+    <title>Dynamic NFT Admin Page</title>
+    <style>
+      body {
+        margin-left: 50px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Dynamic NFT Admin Page</h3>
+    <ul>
+      <h4>Functions for Admin</h4>
+      <li>
+        토큰 발행<br />
+        발행 할 NFT ID:
+        <input
+          id="mintTokenIDInput"
+          type="text"
+          size="3"
+          onkeyup="this.value=this.value.replace(/[^0-9]/g,'');"
+        /><br />
+        TokenHolder:
+        <input
+          id="mintTokenHolderInput"
+          type="text"
+          required
+          minlength="42"
+          maxlength="42"
+          size="42"
+        /><br />
+        <button onclick="mintToken()">NFT 발행</button>
+      </li>
+      <br />
+      <li>
+        토큰 소각<br />
+        소각 할 NFT ID:
+        <input
+          id="burnTokenIDInput"
+          type="text"
+          size="3"
+          onkeyup="this.value=this.value.replace(/[^0-9]/g,'');"
+        /><br />
+        <button onclick="burnToken()">NFT 소각</button>
+      </li>
+      <br />
+      <li>
+        시작 시간 설정<br />
+        시작 시간:
+        <input
+          id="roundBeginTimeInput"
+          type="text"
+          size="12"
+          onkeyup="this.value=this.value.replace(/[^0-9]/g,'');"
+        /><br />
+        <button onclick="setRoundBeginTime()">Set</button>
+      </li>
+      <br />
+      <li>
+        Round 기간 설정<br />
+        Round 기간(sec):
+        <input
+          id="roundIntervalInput"
+          type="text"
+          size="8"
+          onkeyup="this.value=this.value.replace(/[^0-9]/g,'');"
+        /><br />
+        <button onclick="setRoundInterval()">Set</button>
+      </li>
+      <br />
+      <li>
+        참여신청 기간 설정<br />
+        참여신청 기간(sec):
+        <input
+          id="biddingTimeInput"
+          type="text"
+          size="8"
+          onkeyup="this.value=this.value.replace(/[^0-9]/g,'');"
+        /><br />
+        <button onclick="setBiddingTime()">Set</button>
+      </li>
+      <br />
+      <li>
+        NFT 보유계정 조회<br />
+        NFT ID :
+        <input
+          id="ownerOfInput"
+          type="text"
+          size="3"
+          onkeyup="this.value=this.value.replace(/[^0-9]/g,'');"
+        /><br />
+        <span id="ownerOfOutput"></span><br />
+        <button onclick="ownerOf()">조회</button>
+      </li>
+      <br />
+      <li>
+        뽑기 실행<br />
+        <input id="randomSeedInput" type="text" size="8" /><br />
+        <button onclick="pickWinner()">실행</button>
+      </li>
+      <br />
+      <li>
+        참여신청 초기화<br />
+        <button onclick="clearBidList()">실행</button>
+      </li>
+      <br />
+      <li>
+        역대 당첨자 초기화<br />
+        <button onclick="clearWinnerList()">실행</button>
+      </li>
+    </ul>
+    <br />
+    <ul>
+      <h4>현재 상태</h4>
+      <li>컨트랙트 주소: <span id="contractAddr"></span></li>
+      <li>현재 어카운트 주소: <span id="accountAddr"></span></li>
+      <li>발행 NFT 수: <span id="totalSupply"></span></li>
+      <li>발행 NFT 목록: <span id="tokenIDList"></span></li>
+      <li>round 시작 시간: <span id="roundBegin"></span></li>
+      <li>참여신청 허용 시간: <span id="biddingTime"></span></li>
+      <li>round 종료 시간: <span id="roundEnd"></span></li>
+      <li>참여신청 수: <span id="biddingCnt"></span></li>
+      <li>참여신청 계좌 목록: <span id="biddingList"></span></li>
+      <li>역대 당첨자 수: <span id="winnerCnt"></span></li>
+      <li>역대 당첨자 계좌 목록: <span id="winnerList"></span></li>
+      <li>현재 시간: <span id="currentTime"></span></li>
+      <li>현재 상태: <span id="contractState"></span></li>
+      <button onclick="refreshAll()">새로고침</button>
+    </ul>
+  </body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.7.1/web3.min.js"></script>
+
+  <script>
+    let currentTimeStamp;
+    const dynamicNFTAddress = "0xe45957d31c8b249bD3b2dE3A40856Ea720ac59eb";
+    const dynamicNFTabi = [
+      {
+        inputs: [
+          {
+            internalType: "string",
+            name: "name_",
+            type: "string"
+          },
+          {
+            internalType: "string",
+            name: "symbol_",
+            type: "string"
+          }
+        ],
+        stateMutability: "nonpayable",
+        type: "constructor"
+      },
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "address",
+            name: "owner",
+            type: "address"
+          },
+          {
+            indexed: true,
+            internalType: "address",
+            name: "approved",
+            type: "address"
+          },
+          {
+            indexed: true,
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "Approval",
+        type: "event"
+      },
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "address",
+            name: "owner",
+            type: "address"
+          },
+          {
+            indexed: true,
+            internalType: "address",
+            name: "operator",
+            type: "address"
+          },
+          {
+            indexed: false,
+            internalType: "bool",
+            name: "approved",
+            type: "bool"
+          }
+        ],
+        name: "ApprovalForAll",
+        type: "event"
+      },
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "address",
+            name: "previousOwner",
+            type: "address"
+          },
+          {
+            indexed: true,
+            internalType: "address",
+            name: "newOwner",
+            type: "address"
+          }
+        ],
+        name: "OwnershipTransferred",
+        type: "event"
+      },
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: false,
+            internalType: "address[]",
+            name: "winners",
+            type: "address[]"
+          }
+        ],
+        name: "PickWinners",
+        type: "event"
+      },
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "address",
+            name: "from",
+            type: "address"
+          },
+          {
+            indexed: true,
+            internalType: "address",
+            name: "to",
+            type: "address"
+          },
+          {
+            indexed: true,
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "Transfer",
+        type: "event"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "to",
+            type: "address"
+          },
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "approve",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address"
+          }
+        ],
+        name: "balanceOf",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "bid",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256"
+          }
+        ],
+        name: "biddingList",
+        outputs: [
+          {
+            internalType: "address",
+            name: "",
+            type: "address"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "burn",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "cancelBid",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "clearBidList",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "clearWinnerList",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "getApproved",
+        outputs: [
+          {
+            internalType: "address",
+            name: "",
+            type: "address"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "getBiddingList",
+        outputs: [
+          {
+            internalType: "address[]",
+            name: "",
+            type: "address[]"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "getRoundEndTime",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "getState",
+        outputs: [
+          {
+            internalType: "enum DynamicNFT.Status",
+            name: "",
+            type: "uint8"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "getTimeParams",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "roundBeginTime",
+            type: "uint256"
+          },
+          {
+            internalType: "uint256",
+            name: "roundInterval",
+            type: "uint256"
+          },
+          {
+            internalType: "uint256",
+            name: "biddingTime",
+            type: "uint256"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "getTokenIdList",
+        outputs: [
+          {
+            internalType: "uint256[]",
+            name: "",
+            type: "uint256[]"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "getWinnerList",
+        outputs: [
+          {
+            internalType: "address[]",
+            name: "",
+            type: "address[]"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address"
+          },
+          {
+            internalType: "address",
+            name: "operator",
+            type: "address"
+          }
+        ],
+        name: "isApprovedForAll",
+        outputs: [
+          {
+            internalType: "bool",
+            name: "",
+            type: "bool"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "input",
+            type: "address"
+          }
+        ],
+        name: "isWinner",
+        outputs: [
+          {
+            internalType: "bool",
+            name: "",
+            type: "bool"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "to",
+            type: "address"
+          },
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "mint",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "name",
+        outputs: [
+          {
+            internalType: "string",
+            name: "",
+            type: "string"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "owner",
+        outputs: [
+          {
+            internalType: "address",
+            name: "",
+            type: "address"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "ownerOf",
+        outputs: [
+          {
+            internalType: "address",
+            name: "",
+            type: "address"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "string",
+            name: "input",
+            type: "string"
+          }
+        ],
+        name: "pickWinners",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "renounceOwnership",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "from",
+            type: "address"
+          },
+          {
+            internalType: "address",
+            name: "to",
+            type: "address"
+          },
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "safeTransferFrom",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "from",
+            type: "address"
+          },
+          {
+            internalType: "address",
+            name: "to",
+            type: "address"
+          },
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          },
+          {
+            internalType: "bytes",
+            name: "_data",
+            type: "bytes"
+          }
+        ],
+        name: "safeTransferFrom",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "operator",
+            type: "address"
+          },
+          {
+            internalType: "bool",
+            name: "approved",
+            type: "bool"
+          }
+        ],
+        name: "setApprovalForAll",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "input",
+            type: "uint256"
+          }
+        ],
+        name: "setBiddingTime",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "input",
+            type: "uint256"
+          }
+        ],
+        name: "setRoundBeginTime",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "input",
+            type: "uint256"
+          }
+        ],
+        name: "setRoundInterval",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "bytes4",
+            name: "interfaceId",
+            type: "bytes4"
+          }
+        ],
+        name: "supportsInterface",
+        outputs: [
+          {
+            internalType: "bool",
+            name: "",
+            type: "bool"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "symbol",
+        outputs: [
+          {
+            internalType: "string",
+            name: "",
+            type: "string"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256"
+          }
+        ],
+        name: "tokenIDList",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address"
+          }
+        ],
+        name: "tokenOfOwner",
+        outputs: [
+          {
+            internalType: "uint256[]",
+            name: "",
+            type: "uint256[]"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "tokenURI",
+        outputs: [
+          {
+            internalType: "string",
+            name: "",
+            type: "string"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "from",
+            type: "address"
+          },
+          {
+            internalType: "address",
+            name: "to",
+            type: "address"
+          },
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256"
+          }
+        ],
+        name: "transferFrom",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "newOwner",
+            type: "address"
+          }
+        ],
+        name: "transferOwnership",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256"
+          }
+        ],
+        name: "winnerList",
+        outputs: [
+          {
+            internalType: "address",
+            name: "",
+            type: "address"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      }
+    ];
+
+    window.addEventListener("load", async () => {
+      // Checking if Web3 has been injected by the browser (Mist/MetaMask)
+      if (typeof web3 !== "undefined") {
+        // Use Mist/MetaMask's provider
+        window.web3 = new Web3(web3.currentProvider);
+      } else {
+        console.log(typeof web3);
+        console.log("No web3? You should consider trying MetaMask!");
+        // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
+        window.web3 = new Web3(
+          new Web3.providers.HttpProvider("http://localhost:7545")
+        );
+      }
+      // Now you can start your app & access web3 freely:
+      startApp();
+    });
+
+    async function startApp() {
+      window.dynamicNFTContract = new web3.eth.Contract(
+        dynamicNFTabi,
+        dynamicNFTAddress
+      );
+      document.getElementById("contractAddr").innerHTML = dynamicNFTAddress;
+
+      await refreshAll();
+      setInterval(addSeconds, 1000);
+      document.getElementById(
+        "mintTokenHolderInput"
+      ).value = document.getElementById("accountAddr").innerHTML;
+    }
+
+    async function refreshAll() {
+      const accounts = await web3.eth.getAccounts();
+      document.getElementById("accountAddr").innerHTML = accounts[0];
+      await refreshState();
+      await refreshTotalSupply();
+      await refreshTimeParams();
+      await refreshCurrentTime();
+      await refreshBiddingList();
+      await refreshWinnerList();
+    }
+
+    async function refreshState() {
+      const state = await window.dynamicNFTContract.methods.getState().call();
+      let returnValue;
+      switch (state) {
+        case "0":
+          returnValue = "Initial" + " State";
+          break;
+        case "1":
+          returnValue = "AcceptBidding" + " State";
+          break;
+        case "2":
+          returnValue = "FinalizeBidding" + " State";
+          break;
+        case "3":
+          returnValue = "PickedWinner" + " State";
+          break;
+        default:
+          returnValue = "UnpickedWinner" + " State";
+          break;
+      }
+      document.getElementById("contractState").innerHTML = returnValue;
+    }
+
+    async function ownerOf() {
+      const test = document.getElementById("ownerOfInput").value;
+      const account = await window.dynamicNFTContract.methods
+        .ownerOf(parseInt(document.getElementById("ownerOfInput").value))
+        .call();
+      document.getElementById("ownerOfOutput").innerHTML = account;
+    }
+
+    async function refreshTotalSupply() {
+      const tokenIDList = await window.dynamicNFTContract.methods
+        .getTokenIdList()
+        .call();
+      document.getElementById("totalSupply").innerHTML = tokenIDList.length;
+      document.getElementById("tokenIDList").innerHTML = tokenIDList;
+    }
+
+    async function refreshTimeParams() {
+      const timeParams = await window.dynamicNFTContract.methods
+        .getTimeParams()
+        .call();
+
+      document.getElementById("roundBegin").innerHTML =
+        timeParams.roundBeginTime;
+      document.getElementById("biddingTime").innerHTML = timeParams.biddingTime;
+      document.getElementById("roundEnd").innerHTML =
+        parseInt(timeParams.roundBeginTime) +
+        parseInt(timeParams.roundInterval);
+    }
+
+    async function refreshCurrentTime() {
+      const lastBlock = await window.web3.eth.getBlock("latest");
+      currentTimeStamp = lastBlock.timestamp;
+      document.getElementById("currentTime").innerHTML = currentTimeStamp;
+    }
+
+    async function refreshBiddingList() {
+      const biddingList = await window.dynamicNFTContract.methods
+        .getBiddingList()
+        .call();
+      document.getElementById("biddingCnt").innerHTML = biddingList.length;
+      document.getElementById("biddingList").innerHTML = biddingList;
+    }
+
+    async function refreshWinnerList() {
+      const winnerList = await window.dynamicNFTContract.methods
+        .getWinnerList()
+        .call();
+      document.getElementById("winnerCnt").innerHTML = winnerList.length;
+      document.getElementById("winnerList").innerHTML = winnerList;
+    }
+
+    function addSeconds() {
+      let current = document.getElementById("currentTime").innerHTML;
+      document.getElementById("currentTime").innerHTML = parseInt(current) + 1;
+    }
+
+    async function mintToken() {
+      const nftID = document.getElementById("mintTokenIDInput").value;
+      const tokenHolder = document.getElementById("mintTokenHolderInput").value;
+      if (nftID == "") {
+        alert("발행 할 토큰의 ID를 입력하세요");
+        return;
+      }
+      await window.dynamicNFTContract.methods
+        .mint(tokenHolder, nftID)
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+      await refreshTotalSupply();
+    }
+
+    async function burnToken() {
+      const nftID = document.getElementById("burnTokenIDInput").value;
+      if (nftID == "") {
+        alert("발행 할 토큰의 ID를 입력하세요");
+        return;
+      }
+      await window.dynamicNFTContract.methods
+        .burn(nftID)
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+      await refreshTotalSupply();
+    }
+
+    async function setRoundBeginTime() {
+      const roundBegin = document.getElementById("roundBeginTimeInput").value;
+      if (roundBegin == "") {
+        alert("시작 시간을 입력하세요");
+        return;
+      }
+      await window.dynamicNFTContract.methods
+        .setRoundBeginTime(roundBegin)
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+      await refreshTimeParams();
+    }
+
+    async function setRoundInterval() {
+      const roundInterval = document.getElementById("roundIntervalInput").value;
+      if (roundInterval == "") {
+        alert("round 기간을 초 단위로 입력하세요");
+        return;
+      }
+      await window.dynamicNFTContract.methods
+        .setRoundInterval(roundInterval)
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+    }
+
+    async function setBiddingTime() {
+      const biddingTime = document.getElementById("biddingTimeInput").value;
+      if (biddingTime == "") {
+        alert("참여신청기간을 초단위로 입력하세요");
+        return;
+      }
+      await window.dynamicNFTContract.methods
+        .setBiddingTime(biddingTime)
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+      await refreshTimeParams();
+    }
+
+    async function pickWinner() {
+      const randomSeed = document.getElementById("randomSeedInput").value;
+      if (randomSeed == "") {
+        alert("임의 값을 입력하세요");
+        return;
+      }
+      await window.dynamicNFTContract.methods
+        .pickWinners(randomSeed)
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+      await refreshState();
+      await refreshTimeParams();
+      await refreshCurrentTime();
+      await refreshBiddingList();
+      await refreshWinnerList();
+    }
+
+    async function clearBidList() {
+      await window.dynamicNFTContract.methods
+        .clearBidList()
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+    }
+
+    async function clearWinnerList() {
+      await window.dynamicNFTContract.methods
+        .clearWinnerList()
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+    }
+  </script>
+</html>
