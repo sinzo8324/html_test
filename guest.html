@@ -782,7 +782,7 @@
         dynamicNFTabi,
         dynamicNFTAddress
       );
-      document.getElementById("contractAddr").innerHTML = dynamicNFTAddress;
+      document.getElementById("contractAddr").value = dynamicNFTAddress;
 
       await refreshAll();
       setInterval(addSeconds, 1000);
