@@ -133,14 +133,23 @@
       <li>현재 어카운트 주소: <span id="accountAddr"></span></li>
       <li>발행 NFT 수: <span id="totalSupply"></span></li>
       <li>발행 NFT 목록: <span id="tokenIDList"></span></li>
-      <li>round 시작 시간: <span id="roundBegin"></span></li>
+      <li>
+        round 시작 시간: <span id="roundBeginDate"></span><br />
+        <span id="roundBegin"></span>
+      </li>
       <li>참여신청 허용 시간: <span id="biddingTime"></span></li>
-      <li>round 종료 시간: <span id="roundEnd"></span></li>
+      <li>
+        round 종료 시간: <span id="roundEndDate"></span><br />
+        <span id="roundEnd"></span>
+      </li>
       <li>참여신청 수: <span id="biddingCnt"></span></li>
       <li>참여신청 계좌 목록: <span id="biddingList"></span></li>
       <li>역대 당첨자 수: <span id="winnerCnt"></span></li>
       <li>역대 당첨자 계좌 목록: <span id="winnerList"></span></li>
-      <li>현재 시간: <span id="currentTime"></span></li>
+      <li>
+        현재 시간: <span id="currentTimeDate"></span><br />
+        <span id="currentTime"></span>
+      </li>
       <li>현재 상태: <span id="contractState"></span></li>
       <button onclick="refreshAll()">새로고침</button>
     </ul>
@@ -246,17 +255,27 @@
         .getTimeParams()
         .call();
 
+      document.getElementById("roundBeginDate").innerHTML = Unix_timestamp(
+        timeParams.roundBeginTime
+      );
       document.getElementById("roundBegin").innerHTML =
         timeParams.roundBeginTime;
       document.getElementById("biddingTime").innerHTML = timeParams.biddingTime;
-      document.getElementById("roundEnd").innerHTML =
+      const roundEnd =
         parseInt(timeParams.roundBeginTime) +
         parseInt(timeParams.roundInterval);
+      document.getElementById("roundEndDate").innerHTML = Unix_timestamp(
+        roundEnd
+      );
+      document.getElementById("roundEnd").innerHTML = roundEnd;
     }
 
     async function refreshCurrentTime() {
       const lastBlock = await window.web3.eth.getBlock("latest");
       currentTimeStamp = lastBlock.timestamp;
+      document.getElementById("currentTimeDate").innerHTML = Unix_timestamp(
+        currentTimeStamp
+      );
       document.getElementById("currentTime").innerHTML = currentTimeStamp;
     }
 
@@ -278,6 +297,9 @@
 
     function addSeconds() {
       let current = document.getElementById("currentTime").innerHTML;
+      document.getElementById("currentTimeDate").innerHTML = Unix_timestamp(
+        parseInt(current) + 1
+      );
       document.getElementById("currentTime").innerHTML = parseInt(current) + 1;
     }
 
@@ -367,6 +389,29 @@
       await window.dynamicNFTContract.methods
         .clearWinnerList()
         .send({ from: document.getElementById("accountAddr").innerHTML });
+    }
+
+    function Unix_timestamp(t) {
+      let date = new Date(t * 1000);
+      let year = date.getFullYear();
+      let month = "0" + (date.getMonth() + 1);
+      let day = "0" + date.getDate();
+      let hour = "0" + date.getHours();
+      let minute = "0" + date.getMinutes();
+      let second = "0" + date.getSeconds();
+      return (
+        year +
+        "-" +
+        month.substr(-2) +
+        "-" +
+        day.substr(-2) +
+        " " +
+        hour.substr(-2) +
+        ":" +
+        minute.substr(-2) +
+        ":" +
+        second.substr(-2)
+      );
     }
   </script>
 </html>

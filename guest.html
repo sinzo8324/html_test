@@ -38,12 +38,19 @@
         보유 NFT 정보<br />
         <span id="balanceOfInfo"></span><br />
         <span id="tokenOfOwnerInfo"></span><br />
+        <span id="nftLifeTimeDate"></span><br />
         <span id="nftLifeTime"></span>
       </li>
-      <li>참여신청 허용 시간: <span id="biddingTime"></span></li>
+      <li>
+        참여신청 허용 시간: <span id="biddingTimeDate"></span><br />
+        <span id="biddingTime"></span>
+      </li>
       <li>참여신청 수: <span id="biddingCnt"></span></li>
       <li>역대 당첨자 수: <span id="winnerCnt"></span></li>
-      <li>현재 시간: <span id="currentTime"></span></li>
+      <li>
+        현재 시간: <span id="currentTimeDate"></span><br />
+        <span id="currentTime"></span>
+      </li>
       <li>현재 상태: <span id="contractState"></span></li>
       <button onclick="refreshAll()">새로고침</button>
     </ul>
@@ -138,6 +145,9 @@
       const lastBlock = await window.web3.eth.getBlock("latest");
       currentTimeStamp = lastBlock.timestamp;
       document.getElementById("currentTime").innerHTML = currentTimeStamp;
+      document.getElementById("currentTimeDate").innerHTML = Unix_timestamp(
+        currentTimeStamp
+      );
     }
 
     async function refreshBiddingCnt() {
@@ -154,7 +164,8 @@
       const biddingStart = timeParams.roundBeginTime;
       const biddingEnd =
         parseInt(biddingStart) + parseInt(timeParams.biddingTime);
-
+      document.getElementById("biddingTimeDate").innerHTML =
+        Unix_timestamp(biddingStart) + " ~ " + Unix_timestamp(biddingEnd);
       document.getElementById("biddingTime").innerHTML =
         biddingStart + " ~ " + biddingEnd;
     }
@@ -169,6 +180,9 @@
     function addSeconds() {
       let current = document.getElementById("currentTime").innerHTML;
       document.getElementById("currentTime").innerHTML = parseInt(current) + 1;
+      document.getElementById("currentTimeDate").innerHTML = Unix_timestamp(
+        parseInt(current) + 1
+      );
     }
 
     async function refreshOwnedTokenInfo() {
@@ -192,8 +206,13 @@
           "보유 NFT 갯수 : " + balance;
         document.getElementById("tokenOfOwnerInfo").innerHTML =
           "NFT ID 목록 : " + nftIds;
+        document.getElementById("nftLifeTimeDate").innerHTML =
+          "유효 기간 : " +
+          Unix_timestamp(roundBegin) +
+          " ~ " +
+          Unix_timestamp(roundEnd);
         document.getElementById("nftLifeTime").innerHTML =
-          "유효 기간 : " + roundBegin + " ~ " + roundEnd;
+          roundBegin + " ~ " + roundEnd;
       }
     }
 
@@ -201,6 +220,29 @@
       await window.dynamicNFTContract.methods
         .bid()
         .send({ from: document.getElementById("accountAddr").innerHTML });
+    }
+
+    function Unix_timestamp(t) {
+      let date = new Date(t * 1000);
+      let year = date.getFullYear();
+      let month = "0" + (date.getMonth() + 1);
+      let day = "0" + date.getDate();
+      let hour = "0" + date.getHours();
+      let minute = "0" + date.getMinutes();
+      let second = "0" + date.getSeconds();
+      return (
+        year +
+        "-" +
+        month.substr(-2) +
+        "-" +
+        day.substr(-2) +
+        " " +
+        hour.substr(-2) +
+        ":" +
+        minute.substr(-2) +
+        ":" +
+        second.substr(-2)
+      );
     }
   </script>
 </html>
