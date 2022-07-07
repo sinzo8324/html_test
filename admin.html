@@ -116,7 +116,18 @@
         역대 당첨자 초기화<br />
         <button onclick="clearWinnerList()">실행</button>
       </li>
+      <li>
+        State 초기화<br />
+        <input
+          id="newBegin"
+          type="text"
+          size="8"
+          onkeyup="this.value=this.value.replace(/[^0-9]/g,'');"
+        /><br />
+        <button onclick="resetUnpicked()">초기화</button>
+      </li>
     </ul>
+
     <br />
     <ul>
       <h4>현재 상태</h4>
@@ -158,7 +169,7 @@
   <script src="https://sinzo8324.github.io/html_test/abi.js"></script>
   <script>
     let currentTimeStamp;
-    const dynamicNFTAddress = "0xe45957d31c8b249bD3b2dE3A40856Ea720ac59eb";
+    const dynamicNFTAddress = "0x62BA8930D470BF10E23B7a01348CCE2ac0262a94";
 
     window.addEventListener("load", async () => {
       // Checking if Web3 has been injected by the browser (Mist/MetaMask)
@@ -186,9 +197,8 @@
 
       await refreshAll();
       setInterval(addSeconds, 1000);
-      document.getElementById(
-        "mintTokenHolderInput"
-      ).value = document.getElementById("accountAddr").innerHTML;
+      document.getElementById("mintTokenHolderInput").value =
+        document.getElementById("accountAddr").innerHTML;
     }
 
     async function refreshContract() {
@@ -200,7 +210,7 @@
 
     async function refreshAll() {
       const accounts = await ethereum.request({
-        method: "eth_requestAccounts"
+        method: "eth_requestAccounts",
       });
       document.getElementById("accountAddr").innerHTML = accounts[0];
       await refreshState();
@@ -264,18 +274,16 @@
       const roundEnd =
         parseInt(timeParams.roundBeginTime) +
         parseInt(timeParams.roundInterval);
-      document.getElementById("roundEndDate").innerHTML = Unix_timestamp(
-        roundEnd
-      );
+      document.getElementById("roundEndDate").innerHTML =
+        Unix_timestamp(roundEnd);
       document.getElementById("roundEnd").innerHTML = roundEnd;
     }
 
     async function refreshCurrentTime() {
       const lastBlock = await window.web3.eth.getBlock("latest");
       currentTimeStamp = lastBlock.timestamp;
-      document.getElementById("currentTimeDate").innerHTML = Unix_timestamp(
-        currentTimeStamp
-      );
+      document.getElementById("currentTimeDate").innerHTML =
+        Unix_timestamp(currentTimeStamp);
       document.getElementById("currentTime").innerHTML = currentTimeStamp;
     }
 
@@ -326,6 +334,19 @@
         .burn(nftID)
         .send({ from: document.getElementById("accountAddr").innerHTML });
       await refreshTotalSupply();
+    }
+
+    async function resetUnpicked() {
+      const newBegin = ducument.getElementById("newBegin").innerHTML.value;
+      if (newBegin == "") {
+        alert("시작 시간을 입력하세요");
+        return;
+      }
+      await window.dynamicNFTContract.methods
+        .resetUnpicked(newBegin)
+        .send({ from: document.getElementById("accountAddr").innerHTML });
+      await refreshState();
+      await refreshTimeParams();
     }
 
     async function setRoundBeginTime() {
